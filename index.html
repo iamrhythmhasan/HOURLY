@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Work Hours Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --uber: #fff;
+    --woolies: #ED1C24;
+    --macca: #FFC72C; --macca-accent: #DA291C;
+    --bg: #0e0e0e; --surface: #1a1a1a; --border: #2e2e2e;
+    --text: #f0f0f0; --muted: #555;
+    --night: #6C63FF; --day: #FF9F43;
+  }
+  body { background: var(--bg); color: var(--text); font-family: 'DM Mono', monospace; min-height: 100vh; padding: 1.5rem 1rem 5rem; }
+
+  header { text-align: center; margin-bottom: 2rem; }
+  header h1 { font-family: 'Bebas Neue', sans-serif; font-size: clamp(2.2rem,8vw,4.5rem); letter-spacing: .08em; line-height: 1; }
+  header p { color: var(--muted); font-size: .65rem; letter-spacing: .2em; text-transform: uppercase; margin-top: .3rem; }
+  .save-badge { display: inline-flex; align-items: center; gap: .4rem; font-size: .6rem; letter-spacing: .15em; text-transform: uppercase; color: #3ecf8e; background: rgba(62,207,142,.1); border: 1px solid rgba(62,207,142,.25); padding: .2rem .6rem; border-radius: 99px; margin-top: .5rem; }
+  .save-badge::before { content:''; width:6px; height:6px; border-radius:50%; background:#3ecf8e; animation:pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+  /* Tabs */
+  .tabs { display: flex; justify-content: center; gap: .4rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+  .tab-btn { font-family:'Bebas Neue',sans-serif; font-size:1.1rem; letter-spacing:.1em; padding:.5rem 1.3rem; border:2px solid var(--border); background:transparent; color:var(--muted); cursor:pointer; border-radius:2px; transition:all .2s; }
+  .tab-btn:hover { color:var(--text); border-color:#555; }
+  .tab-btn[data-job="woolies"].active { background:var(--woolies); color:#fff; border-color:var(--woolies); }
+  .tab-btn[data-job="maccas"].active  { background:var(--macca); color:var(--macca-accent); border-color:var(--macca); }
+  .tab-btn[data-job="uber"].active    { background:#fff; color:#000; border-color:#fff; }
+
+  /* Panels */
+  .panel { display:none; max-width:700px; margin:0 auto; animation:fadeUp .25s ease; }
+  .panel.active { display:block; }
+  @keyframes fadeUp { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+
+  .panel-header { display:flex; align-items:center; gap:.8rem; margin-bottom:1.2rem; padding-bottom:.9rem; border-bottom:1px solid var(--border); }
+  .brand-bar { width:4px; height:28px; border-radius:2px; flex-shrink:0; }
+  [data-job="woolies"] .brand-bar { background:var(--woolies); }
+  [data-job="maccas"]  .brand-bar { background:var(--macca); }
+  [data-job="uber"]    .brand-bar { background:#fff; }
+  .panel-header h2 { font-family:'Bebas Neue',sans-serif; font-size:1.6rem; letter-spacing:.1em; flex:1; }
+  .clear-btn { font-family:'DM Mono',monospace; font-size:.6rem; letter-spacing:.1em; padding:.3rem .7rem; background:transparent; border:1px solid #333; color:var(--muted); cursor:pointer; border-radius:2px; transition:all .2s; }
+  .clear-btn:hover { border-color:#c0392b; color:#c0392b; }
+
+  /* Week rows */
+  .weeks { display:flex; flex-direction:column; gap:.6rem; }
+  .week-row { background:var(--surface); border:1px solid var(--border); border-radius:4px; padding:.8rem .9rem; display:flex; flex-direction:column; gap:.6rem; }
+  .week-row-top { display:flex; align-items:center; justify-content:space-between; }
+  .week-num { font-size:.55rem; letter-spacing:.2em; text-transform:uppercase; color:var(--muted); }
+  .week-inputs { display:flex; align-items:flex-end; gap:.6rem; flex-wrap:wrap; }
+
+  .field { display:flex; flex-direction:column; gap:.25rem; }
+  .field > label { font-size:.55rem; letter-spacing:.18em; text-transform:uppercase; color:var(--muted); }
+
+  .date-group { display:flex; align-items:center; gap:2px; }
+  .date-group input { background:#111; border:1px solid var(--border); color:var(--text); font-family:'DM Mono',monospace; font-size:.8rem; padding:.38rem .28rem; border-radius:2px; text-align:center; -moz-appearance:textfield; transition:border-color .2s; }
+  .date-group input::-webkit-outer-spin-button,
+  .date-group input::-webkit-inner-spin-button { -webkit-appearance:none; }
+  .date-group input:focus { outline:none; border-color:#555; }
+  .date-group input.dd { width:36px; }
+  .date-group input.mm { width:36px; }
+  .date-group input.yy { width:52px; }
+  .date-sep { color:var(--muted); font-size:.7rem; padding:0 1px; }
+  .range-arrow { color:var(--muted); font-size:.7rem; padding:0 .1rem; align-self:flex-end; margin-bottom:.42rem; }
+
+  input.hrs-input { background:#111; border:1px solid var(--border); color:var(--text); font-family:'DM Mono',monospace; font-size:.8rem; padding:.38rem .5rem; border-radius:2px; width:72px; -moz-appearance:textfield; transition:border-color .2s; }
+  input.hrs-input::-webkit-outer-spin-button,
+  input.hrs-input::-webkit-inner-spin-button { -webkit-appearance:none; }
+  input.hrs-input:focus { outline:none; border-color:#555; }
+
+  .remove-btn { background:transparent; border:1px solid #2a2a2a; color:var(--muted); width:28px; height:28px; border-radius:2px; cursor:pointer; font-size:1rem; display:flex; align-items:center; justify-content:center; transition:all .2s; flex-shrink:0; }
+  .remove-btn:hover { border-color:#c0392b; color:#c0392b; }
+
+  .add-btn { width:100%; margin-top:.4rem; padding:.6rem; background:transparent; border:1px dashed var(--border); color:var(--muted); font-family:'DM Mono',monospace; font-size:.7rem; letter-spacing:.15em; cursor:pointer; border-radius:4px; transition:all .2s; }
+  .add-btn:hover { border-color:#555; color:var(--text); }
+
+  /* ── Summary box ── */
+  .summary { margin-top:1.2rem; border:1px solid var(--border); border-radius:4px; overflow:hidden; background:var(--surface); }
+  .summary-head { padding:.6rem 1rem; font-size:.55rem; letter-spacing:.2em; text-transform:uppercase; color:var(--muted); border-bottom:1px solid var(--border); }
+
+  .sum-row { display:flex; justify-content:space-between; align-items:center; padding:.65rem 1rem; border-bottom:1px solid var(--border); }
+  .sum-row:last-child { border-bottom:none; }
+  .sum-label { font-size:.7rem; color:var(--muted); }
+  .sum-val { font-size:1rem; }
+
+  .sum-row.wk  .sum-val { color:#aaa; }
+  .sum-row.fn  .sum-val { color:#ccc; font-size:1.1rem; }
+  .sum-row.tot { background:#111; }
+  .sum-row.tot .sum-val { font-size:1.35rem; }
+  [data-job="woolies"] .sum-row.tot .sum-val { color:var(--woolies); }
+  [data-job="maccas"]  .sum-row.tot .sum-val { color:var(--macca); }
+  [data-job="uber"]    .sum-row.tot .sum-val { color:#fff; }
+
+  .sum-row.half1 .sum-val { color:var(--day); }
+  .sum-row.half2 .sum-val { color:var(--night); }
+
+  .badge { display:inline-block; font-size:.55rem; letter-spacing:.12em; padding:.1rem .35rem; border-radius:2px; text-transform:uppercase; margin-left:.4rem; vertical-align:middle; }
+  .badge.f1 { background:rgba(255,159,67,.12); color:var(--day); }
+  .badge.f2 { background:rgba(108,99,255,.12); color:var(--night); }
+
+  /* ── Grand Total panel ── */
+  .grand { max-width:700px; margin:2.5rem auto 0; border:1px solid var(--border); border-radius:4px; overflow:hidden; background:var(--surface); }
+  .grand-head { padding:.7rem 1rem; font-size:.6rem; letter-spacing:.2em; text-transform:uppercase; color:var(--muted); border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; }
+  .grand-head span { font-family:'Bebas Neue',sans-serif; font-size:1.1rem; letter-spacing:.1em; color:var(--text); }
+  .grand-row { display:flex; justify-content:space-between; align-items:center; padding:.7rem 1rem; border-bottom:1px solid var(--border); }
+  .grand-row:last-child { border-bottom:none; }
+  .grand-label { font-size:.7rem; color:var(--muted); }
+  .grand-val { font-size:1rem; color:var(--text); }
+  .grand-row.gtot { background:#111; }
+  .grand-row.gtot .grand-val { font-size:1.5rem; color:#fff; }
+  .grand-row.gwool .grand-val { color:var(--woolies); }
+  .grand-row.gmac  .grand-val { color:var(--macca); }
+  .grand-row.guber .grand-val { color:#aaa; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Hours Tracker</h1>
+  <p>Woolworths · McDonald's · Uber</p>
+  <div class="save-badge">Auto-saved to your browser</div>
+</header>
+
+<div class="tabs">
+  <button class="tab-btn active" data-job="woolies" onclick="switchTab('woolies')">🛒 Woolworths</button>
+  <button class="tab-btn"        data-job="maccas"  onclick="switchTab('maccas')">🍟 McDonald's</button>
+  <button class="tab-btn"        data-job="uber"    onclick="switchTab('uber')">🚗 Uber</button>
+</div>
+
+<!-- WOOLWORTHS -->
+<div class="panel active" id="panel-woolies" data-job="woolies">
+  <div class="panel-header"><div class="brand-bar"></div><h2>Woolworths</h2><button class="clear-btn" onclick="clearAll('woolies')">Clear all</button></div>
+  <div class="weeks" id="weeks-woolies"></div>
+  <button class="add-btn" onclick="addWeek('woolies')">+ Add Week</button>
+  <div class="summary" id="summary-woolies"></div>
+</div>
+
+<!-- MACCAS -->
+<div class="panel" id="panel-maccas" data-job="maccas">
+  <div class="panel-header"><div class="brand-bar"></div><h2>McDonald's</h2><button class="clear-btn" onclick="clearAll('maccas')">Clear all</button></div>
+  <div class="weeks" id="weeks-maccas"></div>
+  <button class="add-btn" onclick="addWeek('maccas')">+ Add Week</button>
+  <div class="summary" id="summary-maccas"></div>
+</div>
+
+<!-- UBER -->
+<div class="panel" id="panel-uber" data-job="uber">
+  <div class="panel-header"><div class="brand-bar"></div><h2>Uber Eats / Rideshare</h2><button class="clear-btn" onclick="clearAll('uber')">Clear all</button></div>
+  <div class="weeks" id="weeks-uber"></div>
+  <button class="add-btn" onclick="addWeek('uber')">+ Add Week</button>
+  <div class="summary" id="summary-uber"></div>
+</div>
+
+<script>
+  const JOBS = ['woolies','maccas','uber'];
+
+  let state    = { woolies:[], maccas:[], uber:[] };
+  let counters = { woolies:0, maccas:0, uber:0 };
+
+  // ── Persist ──────────────────────────────────────────────
+  function save(job) {
+    try { localStorage.setItem('hrsv3_'+job, JSON.stringify({ weeks:state[job], counter:counters[job] })); } catch(e){}
+  }
+  function loadAll() {
+    JOBS.forEach(job => {
+      try {
+        const raw = localStorage.getItem('hrsv3_'+job);
+        if (raw) { const d=JSON.parse(raw); state[job]=d.weeks||[]; counters[job]=d.counter||0; sortWeeks(job); }
+      } catch(e){}
+    });
+  }
+
+  // ── Helpers ──────────────────────────────────────────────
+  function pad(n) { return String(n||'').padStart(2,'0'); }
+  function emptyDate() { return {dd:'',mm:'',yyyy:''}; }
+  function dateLabel(d) {
+    if (!d||!d.dd||!d.mm||!d.yyyy) return '—';
+    return `${pad(d.dd)}/${pad(d.mm)}/${d.yyyy}`;
+  }
+  function fmt(h) { return h%1===0 ? h+'hrs' : h.toFixed(2)+'hrs'; }
+
+  // ── Tab ──────────────────────────────────────────────────
+  function switchTab(job) {
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.job===job));
+    document.querySelectorAll('.panel').forEach(p=>p.classList.toggle('active',p.id==='panel-'+job));
+  }
+
+  // ── CRUD ─────────────────────────────────────────────────
+  function addWeek(job, startD=null, endD=null, hours='') {
+    const id=++counters[job];
+    state[job].push({id, start:startD||emptyDate(), end:endD||emptyDate(), hours}); sortWeeks(job);
+    save(job); renderWeeks(job); ['woolies','maccas','uber'].forEach(j=>calculate(j)); grandTotal();
+  }
+  function removeWeek(job,id) {
+    state[job]=state[job].filter(w=>w.id!==id);
+    save(job); renderWeeks(job); ['woolies','maccas','uber'].forEach(j=>calculate(j)); grandTotal();
+  }
+  function updateDate(job,id,which,part,val) {
+    const w=state[job].find(w=>w.id===id); if(!w) return;
+    w[which][part]=val; save(job); ['woolies','maccas','uber'].forEach(j=>calculate(j)); grandTotal();
+  }
+  function updateHours(job,id,val) {
+    const w=state[job].find(w=>w.id===id); if(!w) return;
+    w.hours=val; save(job); ['woolies','maccas','uber'].forEach(j=>calculate(j)); grandTotal();
+  }
+  function clearAll(job) {
+    if(!confirm('Clear all weeks for '+job+'?')) return;
+    state[job]=[]; counters[job]=0;
+    save(job); renderWeeks(job); ['woolies','maccas','uber'].forEach(j=>calculate(j)); grandTotal();
+  }
+
+  
+  function weekStartValue(w){
+    if(!w.start || !w.start.dd || !w.start.mm || !w.start.yyyy) return Number.MAX_SAFE_INTEGER;
+    return new Date(w.start.yyyy, w.start.mm-1, w.start.dd).getTime();
+  }
+
+  function sortWeeks(job){
+    state[job].sort((a,b)=>weekStartValue(a)-weekStartValue(b));
+  }
+
+
+  // ── Render rows ──────────────────────────────────────────
+  function dg(job,id,which,d) {
+    return `<div class="date-group">
+      <input class="dd" type="number" min="1" max="31" placeholder="DD" value="${d.dd}" onchange="updateDate('${job}',${id},'${which}','dd',this.value)">
+      <span class="date-sep">/</span>
+      <input class="mm" type="number" min="1" max="12" placeholder="MM" value="${d.mm}" onchange="updateDate('${job}',${id},'${which}','mm',this.value)">
+      <span class="date-sep">/</span>
+      <input class="yy" type="number" min="2020" max="2099" placeholder="YYYY" value="${d.yyyy}" onchange="updateDate('${job}',${id},'${which}','yyyy',this.value)">
+    </div>`;
+  }
+
+  function renderWeeks(job) {
+    const c=document.getElementById('weeks-'+job);
+    c.innerHTML='';
+    state[job].forEach((w,i)=>{
+      const row=document.createElement('div');
+      row.className='week-row';
+      row.innerHTML=`
+        <div class="week-row-top">
+          <span class="week-num">Week ${i+1}</span>
+          <button class="remove-btn" onclick="removeWeek('${job}',${w.id})">×</button>
+        </div>
+        <div class="week-inputs">
+          <div class="field"><label>From (DD/MM/YYYY)</label>${dg(job,w.id,'start',w.start)}</div>
+          <span class="range-arrow">→</span>
+          <div class="field"><label>To (DD/MM/YYYY)</label>${dg(job,w.id,'end',w.end)}</div>
+          <div class="field"><label>Hours</label>
+            <input class="hrs-input" type="number" min="0" step="0.25" placeholder="0.00" value="${w.hours}" onchange="updateHours('${job}',${w.id},this.value)">
+          </div>
+        </div>`;
+      c.appendChild(row);
+    });
+  }
+
+  // ── Calculate per job ────────────────────────────────────
+  function jobTotal(job) {
+    return state[job].reduce((s,w)=>s+(parseFloat(w.hours)||0),0);
+  }
+
+  
+function calculate(job) {
+const el=document.getElementById('summary-'+job);
+const maxWeeks=Math.max(state.woolies.length,state.maccas.length,state.uber.length);
+let weekly=`<div class="summary-head">Weekly Breakdown</div>`;
+
+for(let i=0;i<maxWeeks;i++){
+ const w=parseFloat(state.woolies[i]?.hours)||0;
+ const m=parseFloat(state.maccas[i]?.hours)||0;
+ const u=parseFloat(state.uber[i]?.hours)||0;
+ const total=w+m+u;
+ const tcolor=i%2===0?'#FF9F43':'#6C63FF';
+
+ weekly += `<div class="sum-row">
+ <span class="sum-label">Week ${i+1}<br>
+ <span style="color:#00C853">Woolworths ${w}</span> |
+ <span style="color:#DA291C">McDonald's ${m}</span> |
+ <span style="color:#FFFFFF">Uber ${u}</span></span>
+ <span class="sum-val" style="font-size:1.5rem;font-weight:bold;color:${tcolor}">${total}</span>
+ </div>`;
+}
+
+weekly += `<div class="summary-head" style="border-top:1px solid var(--border)">Fortnight Breakdown</div>`;
+
+for(let i=0,fn=1;i<maxWeeks;i+=2,fn++){
+ const w=(parseFloat(state.woolies[i]?.hours)||0)+(parseFloat(state.woolies[i+1]?.hours)||0);
+ const m=(parseFloat(state.maccas[i]?.hours)||0)+(parseFloat(state.maccas[i+1]?.hours)||0);
+ const u=(parseFloat(state.uber[i]?.hours)||0)+(parseFloat(state.uber[i+1]?.hours)||0);
+ const total=w+m+u;
+ const tcolor=fn%2===1?'#FF9F43':'#6C63FF';
+
+ weekly += `<div class="sum-row">
+ <span class="sum-label">Fortnight ${fn}<br>
+ <span style="color:#00C853">Woolworths ${w}</span> |
+ <span style="color:#DA291C">McDonald's ${m}</span> |
+ <span style="color:#FFFFFF">Uber ${u}</span></span>
+ <span class="sum-val" style="font-size:1.6rem;font-weight:bold;color:${tcolor}">${total}</span>
+ </div>`;
+}
+el.innerHTML=weekly;
+}
+
+// ── Grand Total ──────────────────────────────────────────
+  function grandTotal() {
+    const tw=jobTotal('woolies');
+    const tm=jobTotal('maccas');
+    const tu=jobTotal('uber');
+    const all=tw+tm+tu;
+    document.getElementById('gt-woolies').textContent = tw>0?fmt(tw):'—';
+    document.getElementById('gt-maccas').textContent  = tm>0?fmt(tm):'—';
+    document.getElementById('gt-uber').textContent    = tu>0?fmt(tu):'—';
+    document.getElementById('gt-all').textContent     = all>0?fmt(all):'—';
+  }
+
+  // ── Boot ─────────────────────────────────────────────────
+  loadAll();
+  JOBS.forEach(job=>{
+    if(state[job].length===0){
+      if(job==='uber'){
+        addWeek('uber',{dd:'18',mm:'05',yyyy:'2025'},{dd:'24',mm:'05',yyyy:'2025'},7.5);
+        addWeek('uber',{dd:'25',mm:'05',yyyy:'2025'},{dd:'31',mm:'05',yyyy:'2025'},0);
+      } else {
+        addWeek(job);
+      }
+    } else {
+      renderWeeks(job); calculate(job);
+    }
+  });
+  grandTotal();
+</script>
+</body>
+</html>
